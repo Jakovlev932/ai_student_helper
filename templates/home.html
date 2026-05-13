@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home - AI Student Helper</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <nav class="bg-blue-500 text-white p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-xl font-bold">AI Student Helper</h1>
+            <a href="/" class="bg-white text-blue-500 px-4 py-2 rounded">Logout</a>
+        </div>
+    </nav>
+    <div class="container mx-auto p-8">
+        <h2 class="text-2xl font-bold mb-6">My Courses</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for course in courses %}
+            <a href="/course/{{ course.id }}" class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition">
+                <h3 class="text-xl font-semibold mb-2">{{ course.name }}</h3>
+                <p class="text-gray-600">Professor: {{ course.professor }}</p>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+</body>
+</html>

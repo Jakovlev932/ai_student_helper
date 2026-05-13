@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grade Exercises - AI Student Helper</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <nav class="bg-green-500 text-white p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-xl font-bold">Professor Portal</h1>
+            <div class="space-x-4">
+                <a href="/creation" class="hover:underline">Create Exercise</a>
+                <a href="/" class="bg-white text-green-500 px-4 py-2 rounded">Logout</a>
+            </div>
+        </div>
+    </nav>
+    <div class="container mx-auto p-8">
+        <h2 class="text-2xl font-bold mb-6">Grade Exam Exercises</h2>
+        
+        <div class="bg-white rounded-lg shadow-md overflow-hidden">
+            <table class="w-full">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Exercise</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Difficulty</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    {% for exercise in exam_exercises %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900">Exercise #{{ exercise.id }}</div>
+                            <div class="text-sm text-gray-500 truncate max-w-xs">{{ exercise.text[:50] }}...</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {{ exercise.difficulty }}/10
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <button onclick="openGradeModal()" 
+                                    data-exercise-id="{{ exercise.id }}"
+                                    data-exercise-text="{{ exercise.text }}"
+                                    class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-1 px-3 rounded text-sm">
+                                Grade
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        {% if not exam_exercises %}
+        <p class="text-gray-500 mt-4">No exam exercises found. Create some first.</p>
+        {% endif %}
+    </div>
+    
+    <!-- Grade Modal -->
+    <div id="grade-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+        <div class="bg-white rounded-lg p-6 w-96">
+            <h3 class="text-xl font-semibold mb-4">Grade Exercise</h3>
+            <p id="exercise-text" class="text-gray-700 mb-4"></p>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Score (0-100)</label>
+                <input type="number" id="score" min="0" max="100" class="w-full p-2 border rounded-lg">
+            </div>
+            <div class="flex space-x-2">
+                <button onclick="submitGrade()" class="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded">
+                    Submit
+                </button>
+                <button onclick="closeGradeModal()" class="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let currentExerciseId = null;
+        
+        function openGradeModal() {
+            const btn = event.target;
+            currentExerciseId = btn.getAttribute('data-exercise-id');
+            const text = btn.getAttribute('data-exercise-text');
+            document.getElementById('exercise-text').textContent = text;
+            document.getElementById('score').value = '';
+            document.getElementById('grade-modal').classList.remove('hidden');
+        }
+        
+        function closeGradeModal() {
+            document.getElementById('grade-modal').classList.add('hidden');
+            currentExerciseId = null;
+        }
+        
+        async function submitGrade() {
+            const score = document.getElementById('score').value;
+            if (score === '' || score < 0 || score > 100) {
+                alert('Please enter a valid score (0-100)');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/grade-exercise', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        exercise_id: parseInt(currentExerciseId),
+                        score: parseFloat(score)
+                    })
+                });
+                
+                alert('Grade submitted successfully!');
+                closeGradeModal();
+                location.reload();
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>

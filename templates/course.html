@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ course.name }} - AI Student Helper</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <nav class="bg-blue-500 text-white p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-xl font-bold">{{ course.name }}</h1>
+            <div class="space-x-4">
+                <a href="/home" class="hover:underline">Back to Home</a>
+                <a href="/" class="bg-white text-blue-500 px-4 py-2 rounded">Logout</a>
+            </div>
+        </div>
+    </nav>
+    <div class="container mx-auto p-8">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold">Exercises</h2>
+            <button type="button" onclick="generateStudyPlan(event)" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded">
+                Generate Study Plan
+            </button>
+        </div>
+        
+        <!-- Nudge notification -->
+        <div id="nudge-container" class="hidden mb-6 bg-yellow-100 border-l-4 border-yellow-500 p-4">
+            <p id="nudge-text" class="font-semibold"></p>
+            <a id="nudge-link" href="/study_plan?course_id={{ course.id }}" class="text-blue-600 hover:underline mt-2 inline-block">
+                Go to Study Plan
+            </a>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-md overflow-hidden">
+            <table class="w-full">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Exercise</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Difficulty</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    {% for exercise in exercises %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900">Exercise #{{ exercise.id }}</div>
+                            <div class="text-sm text-gray-500 truncate max-w-xs">{{ exercise.text[:50] }}...</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                {% if exercise.type == 'exam' %}bg-red-100 text-red-800{% else %}bg-green-100 text-green-800{% endif %}">
+                                {{ exercise.type|capitalize }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {{ exercise.difficulty }}/10
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {% if exercise.last_score is not none %}
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                    {% if exercise.last_score >= 70 %}bg-green-100 text-green-800{% elif exercise.last_score >= 50 %}bg-yellow-100 text-yellow-800{% else %}bg-red-100 text-red-800{% endif %}">
+                                    Score: {{ exercise.last_score }}%
+                                </span>
+                            {% else %}
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                                    Not completed
+                                </span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="mt-6">
+            <a href="/study_plan?course_id={{ course.id }}" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded inline-block">
+                View Study Plan
+            </a>
+        </div>
+    </div>
+    
+    <script>
+        async function generateStudyPlan(event) {
+            event.preventDefault();
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = 'Generating...';
+            
+            try {
+                const response = await fetch(`/api/generate-study-plan/{{ course.id }}`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                
+                // Show nudge
+                const nudgeContainer = document.getElementById('nudge-container');
+                const nudgeText = document.getElementById('nudge-text');
+                nudgeText.textContent = data.nudge;
+                nudgeContainer.classList.remove('hidden');
+                
+                alert('Study plan generated successfully!');
+            } catch (error) {
+                alert('Error generating study plan: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Generate Study Plan';
+            }
+        }
+    </script>
+</body>
+</html>

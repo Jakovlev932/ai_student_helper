@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Study Plan - AI Student Helper</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <nav class="bg-blue-500 text-white p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-xl font-bold">Study Plan</h1>
+            <div class="space-x-4">
+                <a href="/course/{{ course.id }}" class="hover:underline">Back to Course</a>
+                <a href="/" class="bg-white text-blue-500 px-4 py-2 rounded">Logout</a>
+            </div>
+        </div>
+    </nav>
+    <div class="container mx-auto p-8">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold">{{ course.name }} - Study Plan</h2>
+            <button onclick="refreshStudyPlan()" data-course-id="{{ course.id }}" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded">
+                Refresh
+            </button>
+        </div>
+        
+        <!-- Current Exercise -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h3 class="text-xl font-semibold mb-4">Current Exercise</h3>
+            {% if current_exercise %}
+                <div class="border-l-4 border-blue-500 pl-4">
+                    <p class="text-lg mb-4">{{ current_exercise.text }}</p>
+                    <div class="space-y-4">
+                        <textarea id="solution" class="w-full p-3 border rounded-lg" rows="4" placeholder="Enter your solution..."></textarea>
+                        <button onclick="submitSolution()" data-exercise-id="{{ current_exercise.id }}" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded">
+                            Submit Solution
+                        </button>
+                    </div>
+                </div>
+            {% else %}
+                <p class="text-gray-500">No current exercise. Generate a study plan first.</p>
+            {% endif %}
+        </div>
+        
+        <!-- Study Plan Blocks -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h3 class="text-xl font-semibold mb-4">Study Plan</h3>
+            {% if blocks %}
+                <div class="space-y-4">
+                    {% for block in blocks %}
+                    <div class="border rounded-lg p-4">
+                        <div class="flex justify-between items-center mb-2">
+                            <h4 class="font-semibold">Block {{ block.block_order }}: {{ block.topic_name }}</h4>
+                            <button onclick="selectBlock()" data-block-id="{{ block.id }}" class="text-blue-500 hover:underline text-sm">
+                                Select this block
+                            </button>
+                        </div>
+                        <p class="text-sm text-gray-600">Topic ID: {{ block.topic_id }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-gray-500">No study plan generated yet.</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    <script>
+        async function submitSolution() {
+            const btn = event.target;
+            const exerciseId = btn.getAttribute('data-exercise-id');
+            const solution = document.getElementById('solution').value;
+            if (!solution.trim()) {
+                alert('Please enter a solution');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/submit-solution', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ exercise_id: parseInt(exerciseId), solution: solution })
+                });
+                const data = await response.json();
+                
+                if (data.correct) {
+                    alert('Correct! Score: 100%');
+                    location.reload();
+                } else {
+                    alert('Incorrect. Score: 0%');
+                }
+            } catch (error) {
+                alert('Error submitting solution: ' + error.message);
+            }
+        }
+        
+        async function refreshStudyPlan() {
+            const btn = event.target;
+            const courseId = btn.getAttribute('data-course-id');
+            btn.disabled = true;
+            btn.textContent = 'Refreshing...';
+            
+            try {
+                const response = await fetch(`/api/generate-study-plan/${courseId}`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                location.reload();
+            } catch (error) {
+                alert('Error refreshing study plan: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Refresh';
+            }
+        }
+        
+        function selectBlock() {
+            const btn = event.target;
+            const blockId = btn.getAttribute('data-block-id');
+            // In a full implementation, this would load exercises from the selected block
+            alert('Block selection would load exercises from this block');
+        }
+    </script>
+</body>
+</html>
