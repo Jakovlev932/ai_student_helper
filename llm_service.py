@@ -9,7 +9,7 @@ load_dotenv()
 class LLMService:
     def __init__(self):
         #api_key = os.getenv("GEMINI_API_KEY")
-        api_key = "FAKE KEY"
+        api_key = "***REMOVED***"
         if not api_key:
             raise ValueError("GEMINI_API_KEY not found in environment variables")
         self.client = genai.Client(api_key=api_key)
@@ -41,6 +41,8 @@ Return ONLY a JSON array of label names, e.g.:
             if result.startswith("```json"):
                 result = result.replace("```json", "").replace("```", "").strip()
             labels = json.loads(result)
+            print(f"Suggested labels:")
+            print(json.dumps(labels, indent=2))
             return labels if isinstance(labels, list) else [labels]
         except Exception as e:
             print(f"Error suggesting labels: {e}")
@@ -91,6 +93,8 @@ Return ONLY a JSON array with this structure:
             if result.startswith("```json"):
                 result = result.replace("```json", "").replace("```", "").strip()
             strengths = json.loads(result)
+            print(f"Label strengths:")
+            print(json.dumps(strengths, indent=2))
             return strengths if isinstance(strengths, list) else []
         except Exception as e:
             print(f"Error computing label strengths: {e}")
@@ -136,6 +140,8 @@ Return ONLY a JSON array with this structure:
             if result.startswith("```json"):
                 result = result.replace("```json", "").replace("```", "").strip()
             plan = json.loads(result)
+            print(f"Study plan:")
+            print(json.dumps(plan, indent=2))
             return plan if isinstance(plan, list) else []
         except Exception as e:
             print(f"Error generating study plan: {e}")
