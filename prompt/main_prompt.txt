@@ -1,0 +1,258 @@
+Comment: this is the final prompt passed to windsurf for the main code generation
+
+Write a AI student helper that analyzes a student's learning profile and nudges them toward doing an exercise.
+
+The System's architechture should include these 3 components:
+[1] Trace Indexer: parses and indexes the student's learning history
+[2] Gap Detector: identifies weak, avoided, or decaying concepts from the trace
+[3] Nudge Engine: generates a direct, actionable provocation, no explanations, no
+solutions
+
+Its a MVP so very simple, no need for docker or anything like that.
+
+Frontend: Html and basic tailwind
+Backend: Python + FastApi + Sqlite
+LLM: Gemini
+
+Frontend pages
+
+1. /login 
+Fake login: does nothing, there is only 2 buttons Student Login / Professor Login.
+
+Student pages:
+2. /home 
+Main page with courses names
+
+3. /{course}
+Course page with all exercises listed like a table, should say exercise name/number and if the student has done it, if so the score appears
+
+This page is where the notification appears later, which should go to /study_plan
+
+Also it show have a button that says study plan
+
+4. /study_plan
+
+Shows the current next exercise in the study plan
+Below it shows the study plan
+If a user selected another exercise, substitute the exercise shown above.
+The user can click the refresh button to got to backend 3. again and do the whole process. The webpage should wait for the new study plan to be created and then display it.
+
+5. /creation
+Professor create exercise, choose type (exam/practice), submit and LLM will show labels. Professor accept labels or can write one he wants
+
+6. /grade
+He can choose a previous exam exercise and grade the student on it. Only one student exist so no need for frontend logic
+
+Backend
+
+I will explain you the flow
+
+1.
+Professor creates one exercise, LLM will read exercise and see labels table. If he finds good label he suggests it otherwise he suggests a new one.
+Professor clicks other submit button that should add those labels.
+
+2.
+Professor can grades exam exercise.
+
+3.
+
+Study plan Button triggers the whole process.
+It will compute the score for every label in the table Labels.
+
+Label Strenght is computed by retrieving exercise logs of the student
+It must be computed following some rules that the LLM needs to know such as.
+Exam questions are more important, and recent scores must give a more impactful score.
+Topics without any exercise done should have 0 score.
+
+The LLM should output a Json file with a list such as:
+{
+{
+    label: "Adition"
+    score: 30,
+    trend: declining,
+    llm_reasoning: ...
+}
+{
+    label: "Subtraction"
+    score: 70,
+    trend: improving,
+    llm_reasoning: ...
+}
+}
+
+The LLM should output a Json file that lists for each label in the label-list:
+A score - an indicator of severity of how badly the student is doing in this topic, (0 - very bad, 100 - excellent)
+Trend - indicates trend, should consider recent timestamps
+reasoning - LLMs notes about why the scores were chosen, like "student failed in exercise 7". These are mostly LLMs notes to its future self.
+
+4.
+After that in another call the LLM uses that information to create a second list, called the study plan.
+The study plan is a list of study blocks, each with a list of exercises suggested, LLM decides them based on the score and reasoning. Try not to overload with topics he has done a lot in recent times.
+
+5.
+After we receive These two, The Nudge engine will create an actionable nudge to the student, asking them to do an exercise from the studyplan from the topic with the worst score.
+
+6.
+The student can click on it and will be directed to the study plan page. /study_plan
+There he can do the exercise, submit a solution and if correct the system compares it to the solution if its the same grade it Correct, if not grade it Incorrect.
+If submitted correctly load next exercise.
+
+
+
+Below is the database code
+
+​PRAGMA foreign_keys = ON;
+
+
+-- =========================
+-- STUDENT
+-- =========================
+CREATE TABLE student (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT UNIQUE,
+    created TEXT NOT NULL
+);
+
+
+-- =========================
+-- COURSE
+-- =========================
+CREATE TABLE course (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    professor TEXT
+);
+
+
+-- student can enroll in many courses
+CREATE TABLE student_course (
+    student_id INTEGER NOT NULL,
+    course_id INTEGER NOT NULL,
+    PRIMARY KEY (student_id, course_id),
+    FOREIGN KEY (student_id) REFERENCES student(id),
+    FOREIGN KEY (course_id) REFERENCES course(id)
+);
+
+
+-- =========================
+-- LABELS
+-- =========================
+CREATE TABLE labels (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    course_id INTEGER NOT NULL,
+    FOREIGN KEY (course_id) REFERENCES course(id)
+);
+
+
+-- =========================
+-- EXAM
+-- =========================
+CREATE TABLE exam (
+    id INTEGER PRIMARY KEY,
+    course_id INTEGER NOT NULL,
+    created TEXT NOT NULL,
+    FOREIGN KEY (course_id) REFERENCES course(id)
+);
+
+
+-- =========================
+-- EXERCISE
+-- =========================
+CREATE TABLE exercise (
+    id INTEGER PRIMARY KEY,
+    course_id INTEGER NOT NULL,
+    text TEXT NOT NULL,
+    solution TEXT,
+    difficulty INTEGER,
+    created TEXT NOT NULL,
+    type TEXT CHECK(type IN ('exam', 'quiz')),
+    FOREIGN KEY (course_id) REFERENCES course(id)
+);
+
+
+-- exam contains many exercises
+CREATE TABLE exam_exercise (
+    exam_id INTEGER NOT NULL,
+    exercise_id INTEGER NOT NULL,
+    PRIMARY KEY (exam_id, exercise_id),
+    FOREIGN KEY (exam_id) REFERENCES exam(id),
+    FOREIGN KEY (exercise_id) REFERENCES exercise(id)
+);
+
+
+-- exercise can have many labels
+CREATE TABLE exercise_label (
+    exercise_id INTEGER NOT NULL,
+    label_id INTEGER NOT NULL,
+    PRIMARY KEY (exercise_id, label_id),
+    FOREIGN KEY (exercise_id) REFERENCES exercise(id),
+    FOREIGN KEY (label_id) REFERENCES labels(id)
+);
+
+
+-- =========================
+-- EXERCISE LOG
+-- =========================
+CREATE TABLE exercise_log (
+    id INTEGER PRIMARY KEY,
+    exercise_id INTEGER NOT NULL,
+    student_id INTEGER NOT NULL,
+    execution_type TEXT CHECK(execution_type IN ('exam', 'individual')),
+    created TEXT NOT NULL,
+    FOREIGN KEY (exercise_id) REFERENCES exercise(id),
+    FOREIGN KEY (student_id) REFERENCES student(id)
+);
+
+
+-- =========================
+-- LABEL STRENGTH
+-- =========================
+CREATE TABLE label_strength (
+    id INTEGER PRIMARY KEY,
+    student_id INTEGER NOT NULL,
+    label_id INTEGER NOT NULL,
+    score REAL,
+    trend REAL,
+    llm_reasoning TEXT,
+    updated TEXT NOT NULL,
+    FOREIGN KEY (student_id) REFERENCES student(id),
+    FOREIGN KEY (label_id) REFERENCES labels(id)
+);
+
+
+-- =========================
+-- STUDY PLAN
+-- =========================
+CREATE TABLE study_plan (
+    id INTEGER PRIMARY KEY,
+    course_id INTEGER NOT NULL,
+    student_id INTEGER NOT NULL,
+    created TEXT NOT NULL,
+    FOREIGN KEY (course_id) REFERENCES course(id),
+    FOREIGN KEY (student_id) REFERENCES student(id)
+);
+
+
+-- =========================
+-- STUDY BLOCK
+-- =========================
+CREATE TABLE study_block (
+    id INTEGER PRIMARY KEY,
+    study_plan_id INTEGER NOT NULL,
+    block_order INTEGER NOT NULL,
+    topic_id INTEGER NOT NULL,
+    FOREIGN KEY (study_plan_id) REFERENCES study_plan(id),
+    FOREIGN KEY (topic_id) REFERENCES labels(id)
+);
+
+
+-- study block contains many exercises
+CREATE TABLE study_block_exercise (
+    study_block_id INTEGER NOT NULL,
+    exercise_id INTEGER NOT NULL,
+    PRIMARY KEY (study_block_id, exercise_id),
+    FOREIGN KEY (study_block_id) REFERENCES study_block(id),
+    FOREIGN KEY (exercise_id) REFERENCES exercise(id)
+);
